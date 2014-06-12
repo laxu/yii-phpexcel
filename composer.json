@@ -1,0 +1,24 @@
+{
+    "name": "nordsoftware/yii-phpexecel",
+    "description": "Simple wrapper for PHPExcel",
+    "keywords": ["yii", "phpexcel", "xls", "csv", "excel"],
+    "license": "BSD-3-Clause",
+    "authors": [
+        {
+            "name": "Mikko Lakomaa",
+            "email": "mikko.lakomaa@nordsoftware.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "PHPOffice/PHPExcel": "1.8.x"
+    },
+    "require-dev": {
+        "yiisoft/yii": ">=1.1.14"
+    },
+    "autoload": {
+        "psr-4": {
+            "nordsoftware\\yii_phpexcel\\": "src/"
+        }
+    }
+}
