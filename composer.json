@@ -1,5 +1,5 @@
 {
-    "name": "laxu/yii-phpexecel",
+    "name": "laxu/yii-phpexcel",
     "description": "Simple wrapper for PHPExcel",
     "keywords": ["yii", "phpexcel", "xls", "csv", "excel"],
     "license": "BSD-3-Clause",
