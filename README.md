@@ -36,6 +36,26 @@ public function writeExcelFile()
     $manager = Yii::app()->getComponent('excel');
     //Create empty instance
     $excel = $manager->create();
+    .....
+    //Note that setData doesn't care about the actual keys in the data, only the order
+    $data = array(
+        array(
+            'header1',
+            'header2',
+            'header3'
+        ),
+        array(
+            'data1',
+            'data2',
+            'data3',
+        ),
+        array(
+            'id' => 1,
+            'name' => 'Example',
+            'moreData' => 'Something'
+        )
+    )
+    .....
     $excel->setData($data);
     $excel->save();
 }
