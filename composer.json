@@ -1,5 +1,5 @@
 {
-    "name": "nordsoftware/yii-phpexecel",
+    "name": "laxu/yii-phpexcel",
     "description": "Simple wrapper for PHPExcel",
     "keywords": ["yii", "phpexcel", "xls", "csv", "excel"],
     "license": "BSD-3-Clause",
@@ -18,7 +18,7 @@
     },
     "autoload": {
         "psr-4": {
-            "nordsoftware\\yii_phpexcel\\": "src/"
+            "laxu\\yii_phpexcel\\": "src/"
         }
     }
 }

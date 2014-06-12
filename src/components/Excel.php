@@ -1,18 +1,29 @@
 <?php
 
 
-namespace nordsoftware\yii_phpexcel\components;
+namespace laxu\yii_phpexcel\components;
 
 /**
  * Class Excel
  * @package nordsoftware\yii_phpexcel\components
  * @var $objPHPExcel PHPExcel;
  */
-class Excel {
+class Excel
+{
     /**
      * @var string PHPExcel location
      */
-    public $libPath = 'vendor.yii-phpexcel.lib.phpexcel';
+    public $libPath = 'vendor.phpexcel';
+
+    /**
+     * @var string directory where files are stored
+     */
+    public $filePath;
+
+    /**
+     * @var string filename
+     */
+    public $filename;
 
     /**
      * @var PHPExcel instance
@@ -33,7 +44,7 @@ class Excel {
      */
     public function read($file)
     {
-        return $this->phpExcel->getActiveSheet()->toArray(null,true,true,true);
+        return $this->phpExcel->getActiveSheet()->toArray(null, true, true, true);
     }
 
     /**
@@ -45,29 +56,29 @@ class Excel {
      */
     public function write($file, $data)
     {
-        return $this->phpExcel->write($data);
+        $this->phpExcel->write($data);
+        $this->phpExcel->save($this->getFilePath());
     }
 
     /**
      * Set PHPExcel instance
-     * @param null|string|PHPExcel $file
+     * @param null|string|PHPExcel $filename
      * @throws CException
      */
-    public function setInstance($file = null){
-        if($file === null) {
+    public function setInstance($filename = null)
+    {
+        if ($filename === null) {
             //Create new workbook
             $this->phpExcel = new PHPExcel();
-        }
-        elseif(is_string($file)) {
+        } elseif (is_string($filename)) {
             //Load an existing one
-            $this->phpExcel = PHPExcel_IOFactory::load($file);
-        }
-        elseif($file instanceof PHPExcel) {
+            $this->filename = $filename;
+            $this->phpExcel = PHPExcel_IOFactory::load($this->getFilePath());
+        } elseif ($filename instanceof PHPExcel) {
             //Use another PHPExcel instance passed to this one
-            $this->phpExcel = $file;
-        }
-        else {
-            throw new CException('$file should be null, filename or PHPExcel instance');
+            $this->phpExcel = $filename;
+        } else {
+            throw new CException('Filename should be null, filename or PHPExcel instance');
         }
     }
 
@@ -75,7 +86,13 @@ class Excel {
      * Get current PHPExcel instance
      * @return PHPExcel
      */
-    public function getInstance() {
+    public function getInstance()
+    {
         return $this->phpExcel;
+    }
+
+    public function getFilePath()
+    {
+        return $this->filePath . $this->filename;
     }
 } 
