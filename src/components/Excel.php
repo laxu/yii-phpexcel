@@ -1,7 +1,7 @@
 <?php
 
 
-namespace nordsoftware\yii_phpexcel\components;
+namespace laxu\yii_phpexcel\components;
 
 /**
  * Class Excel
