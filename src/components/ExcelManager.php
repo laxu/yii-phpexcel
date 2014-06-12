@@ -22,20 +22,33 @@ class ExcelManager extends \CApplicationComponent
     /**
      * Get an instance of Excel class
      * @param string $filename
-     * @return Excel
+     * @return \Excel
      */
     public function get($filename)
     {
-        $excel = new Excel($filename, $this->filePath);
-        return $excel;
+        return $this->buildInstance($filename);
     }
 
     /**
      * Create a new instance of Excel class
-     * @return Excel
+     * @return \Excel
      */
     public function create()
     {
-        return new Excel(null, $this->filePath);
+        return $this->buildInstance();
+    }
+
+    /**
+     * Create Excel component
+     * @param null|string $filename
+     * @return \Excel
+     */
+    protected function buildInstance($filename = null) {
+        $excel = Yii::createComponent(array(
+                'class' => 'Excel',
+                'filename' => $filename,
+                'filePath' => $this->filePath
+            ));
+        return $excel;
     }
 }

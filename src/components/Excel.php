@@ -8,7 +8,7 @@ namespace laxu\yii_phpexcel\components;
  * @package laxu\yii_phpexcel\components
  * @var $objPHPExcel \PHPExcel;
  */
-class Excel
+class Excel extends CComponent
 {
     /**
      * @var string directory where files are stored
@@ -35,13 +35,17 @@ class Excel
      */
     protected $columnCharSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
-    function __construct($file = null, $filePath)
+    public function init()
     {
+        parent::init();
         $this->columnCharSet = str_split($this->columnCharSet);
-        $this->filePath = $filePath;
-        $this->setInstance($file);
+        if($this->filename === null) {
+            $this->createNewInstance();
+        }
+        else {
+            $this->loadFromFile();
+        }
     }
-
 
     /**
      * Get raw data as it comes from PHPExcel
@@ -127,24 +131,29 @@ class Excel
     }
 
     /**
-     * Set PHPExcel instance
-     * @param null|string $filename
+     * Create a new PHPExcel instance
+     */
+    public function createNewInstance() {
+        $this->phpExcel = new \PHPExcel();
+        $this->filename = $this->generateFilename();
+    }
+
+    /**
+     * Create PHPExcel instance by loading the file
      * @throws \CException
      */
-    public function setInstance($filename = null)
+    public function loadFromFile()
     {
-        if ($filename === null) {
-            //Create new workbook
-            $this->phpExcel = new \PHPExcel();
-            $this->filename = $this->generateFilename();
-        } elseif (is_string($filename)) {
-            //Load an existing one
-            $this->filename = $filename;
-            $this->phpExcel = \PHPExcel_IOFactory::load($this->resolveFilePath());
-            $this->stored = true;
-        } else {
-            throw new \CException('Filename should be null or filename');
+        if(!is_string($this->filename)) {
+            throw new \CException('Filename should be a string containing a filename');
         }
+
+        $filePath = $this->resolveFilePath();
+        if(!file_exists($filePath)) {
+            throw new \CException('File not found');
+        }
+
+        $this->phpExcel = \PHPExcel_IOFactory::load($filePath);
     }
 
     /**
