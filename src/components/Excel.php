@@ -8,11 +8,22 @@ namespace nordsoftware\yii_phpexcel\components;
  * @package nordsoftware\yii_phpexcel\components
  * @var $objPHPExcel PHPExcel;
  */
-class Excel {
+class Excel
+{
     /**
      * @var string PHPExcel location
      */
-    public $libPath = 'vendor.yii-phpexcel.lib.phpexcel';
+    public $libPath = 'vendor.phpexcel';
+
+    /**
+     * @var string directory where files are stored
+     */
+    public $filePath;
+
+    /**
+     * @var string filename
+     */
+    public $filename;
 
     /**
      * @var PHPExcel instance
@@ -33,7 +44,7 @@ class Excel {
      */
     public function read($file)
     {
-        return $this->phpExcel->getActiveSheet()->toArray(null,true,true,true);
+        return $this->phpExcel->getActiveSheet()->toArray(null, true, true, true);
     }
 
     /**
@@ -45,7 +56,8 @@ class Excel {
      */
     public function write($file, $data)
     {
-        return $this->phpExcel->write($data);
+        $this->phpExcel->write($data);
+        $this->phpExcel->save($this->getFilePath());
     }
 
     /**
@@ -53,20 +65,18 @@ class Excel {
      * @param null|string|PHPExcel $file
      * @throws CException
      */
-    public function setInstance($file = null){
-        if($file === null) {
+    public function setInstance($file = null)
+    {
+        if ($file === null) {
             //Create new workbook
             $this->phpExcel = new PHPExcel();
-        }
-        elseif(is_string($file)) {
+        } elseif (is_string($file)) {
             //Load an existing one
             $this->phpExcel = PHPExcel_IOFactory::load($file);
-        }
-        elseif($file instanceof PHPExcel) {
+        } elseif ($file instanceof PHPExcel) {
             //Use another PHPExcel instance passed to this one
             $this->phpExcel = $file;
-        }
-        else {
+        } else {
             throw new CException('$file should be null, filename or PHPExcel instance');
         }
     }
@@ -75,7 +85,13 @@ class Excel {
      * Get current PHPExcel instance
      * @return PHPExcel
      */
-    public function getInstance() {
+    public function getInstance()
+    {
         return $this->phpExcel;
+    }
+
+    public function getFilePath()
+    {
+        return $this->filePath . $this->filename;
     }
 } 
