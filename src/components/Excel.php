@@ -62,22 +62,23 @@ class Excel
 
     /**
      * Set PHPExcel instance
-     * @param null|string|PHPExcel $file
+     * @param null|string|PHPExcel $filename
      * @throws CException
      */
-    public function setInstance($file = null)
+    public function setInstance($filename = null)
     {
-        if ($file === null) {
+        if ($filename === null) {
             //Create new workbook
             $this->phpExcel = new PHPExcel();
-        } elseif (is_string($file)) {
+        } elseif (is_string($filename)) {
             //Load an existing one
-            $this->phpExcel = PHPExcel_IOFactory::load($file);
-        } elseif ($file instanceof PHPExcel) {
+            $this->filename = $filename;
+            $this->phpExcel = PHPExcel_IOFactory::load($this->getFilePath());
+        } elseif ($filename instanceof PHPExcel) {
             //Use another PHPExcel instance passed to this one
-            $this->phpExcel = $file;
+            $this->phpExcel = $filename;
         } else {
-            throw new CException('$file should be null, filename or PHPExcel instance');
+            throw new CException('Filename should be null, filename or PHPExcel instance');
         }
     }
 
