@@ -11,7 +11,7 @@ class ExcelManager extends \CApplicationComponent
     /**
      * @var string directory alias where files are stored
      */
-    public $filePath;
+    public $savePath;
 
     public function init()
     {
@@ -20,22 +20,21 @@ class ExcelManager extends \CApplicationComponent
 
     /**
      * Get an instance of Excel class
-     * @param string $filename
      * @param string $filePath
      * @throws \CException
-     * @return \Excel
+     * @return Excel
      */
-    public function get($filename, $filePath = null)
+    public function get($filePath)
     {
-        if (empty($filename)) {
-            throw new \CException('Empty filename');
+        if (empty($filePath)) {
+            throw new \CException(\Yii::t('excel', 'Empty filename'));
         }
-        return $this->buildInstance($filename, $filePath);
+        return $this->buildInstance($filePath);
     }
 
     /**
      * Create a new instance of Excel class
-     * @return \Excel
+     * @return Excel
      */
     public function create()
     {
@@ -44,23 +43,18 @@ class ExcelManager extends \CApplicationComponent
 
     /**
      * Create Excel component
-     * @param null|string $filename
-     * @param null|string $filePath filepath alias
-     * @return \Excel
+     * @param null|string $filePath file location
+     * @return Excel
      */
-    protected function buildInstance($filename = null, $filePath = null)
+    protected function buildInstance($filePath = null)
     {
-        if($filePath === null) {
-            $filePath = $this->filePath;
-        }
         $excel = \Yii::createComponent(
             array(
                 'class' => '\laxu\yii_phpexcel\components\Excel',
-                'filename' => $filename,
-                'filePath' => $filePath
+                'filePath' => $filePath,
+                'savePath' => $this->savePath
             )
         );
-
         $excel->init();
         return $excel;
     }

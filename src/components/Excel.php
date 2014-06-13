@@ -11,14 +11,14 @@ namespace laxu\yii_phpexcel\components;
 class Excel extends \CComponent
 {
     /**
-     * @var string alias of directory where files are stored
+     * @var string where file tied to this component is located
      */
     public $filePath;
 
     /**
-     * @var string filename
+     * @var string Where new files are to be saved
      */
-    public $filename;
+    public $savePath;
 
     /**
      * @var \PHPExcel instance
@@ -52,7 +52,11 @@ class Excel extends \CComponent
     {
         //Turn columnCharSet into an array
         $this->columnCharSet = str_split($this->columnCharSet);
-        if ($this->filename === null) {
+        if(!file_exists($this->savePath)) {
+            //Directory not found, assume it's an alias
+            $this->savePath = \Yii::getPathOfAlias($this->savePath);
+        }
+        if ($this->filePath === null) {
             //No filename found, create an empty instance
             $this->createNewInstance();
         } else {
@@ -113,36 +117,12 @@ class Excel extends \CComponent
     {
         $properties = $this->phpExcel->getProperties();
         foreach ($data as $key => $value) {
-            switch ($key) {
-                case 'creator':
-                    $properties->setCreator($value);
-                    break;
-                case 'lastModifiedBy':
-                    $properties->setLastModifiedBy($value);
-                    break;
-                case 'title':
-                    $properties->setTitle($value);
-                    break;
-                case 'subject':
-                    $properties->setSubject($value);
-                    break;
-                case 'description':
-                    $properties->setDescription($value);
-                    break;
-                case 'company':
-                    $properties->setCompany($value);
-                    break;
-                case 'category':
-                    $properties->setCategory($value);
-                    break;
-                case 'manager':
-                    $properties->setManager($value);
-                    break;
-                case 'keywords':
-                    $properties->setKeywords($value);
-                    break;
-                default:
-                    $properties->setCustomProperty($key, $value);
+            $method = 'set' . ucfirst($key);
+            if(method_exists($properties, $method)) {
+                $properties->$method($value);
+            }
+            else {
+                $properties->setCustomProperty($key, $value);
             }
         }
     }
@@ -239,9 +219,9 @@ class Excel extends \CComponent
         $filePath = $this->resolveFilePath();
 
         if (file_exists($filePath)) {
-            \Yii::app()->getRequest()->sendFile($this->filename, file_get_contents($filePath));
+            \Yii::app()->getRequest()->sendFile($this->filePath, file_get_contents($filePath));
         } else {
-            throw new \CHttpException(404, 'File not found');
+            throw new \CHttpException(404, \Yii::t('excel', 'File not found'));
         }
     }
 
@@ -251,7 +231,7 @@ class Excel extends \CComponent
     public function createNewInstance()
     {
         $this->phpExcel = new \PHPExcel();
-        $this->filename = $this->generateFilename();
+        $this->filePath = $this->generateFilePath();
     }
 
     /**
@@ -260,8 +240,8 @@ class Excel extends \CComponent
      */
     public function loadFromFile()
     {
-        if (!is_string($this->filename)) {
-            throw new \CException('Filename should be a string containing a filename');
+        if (!is_string($this->filePath)) {
+            throw new \CException(\Yii::t('excel', 'Filename should be a string containing a filename'));
         }
 
         $filePath = $this->resolveFilePath();
@@ -321,11 +301,15 @@ class Excel extends \CComponent
 
     /**
      * Resolve full path for file
+     * @throws \CException
      * @return string
      */
     public function resolveFilePath()
     {
-        return \Yii::getPathOfAlias($this->filePath) . '/' . $this->filename;
+        if(empty($this->filePath)) {
+            throw new \CException(\Yii::t('excel', 'filePath is undefined'));
+        }
+        return $this->filePath;
     }
 
     /**
@@ -342,15 +326,18 @@ class Excel extends \CComponent
     /**
      * Generate filename
      * @param string $extension file extension
+     * @throws \CException
      * @return string
      */
-    protected function generateFilename($extension = 'xlsx')
+    protected function generateFilePath($extension = 'xlsx')
     {
-        $filePath = \Yii::getPathOfAlias($this->filePath);
+        if(empty($this->savePath)) {
+            throw new \CException(\Yii::t('excel', 'savePath is undefined'));
+        }
         $filename = uniqid() . '.' . $extension;
-        while (file_exists($filePath . '/' . $filename)) {
+        while (file_exists($this->savePath . '/' . $filename)) {
             $filename = uniqid() . '.' . $extension;
         }
-        return $filename;
+        return $this->savePath . '/' . $filename;
     }
 }
