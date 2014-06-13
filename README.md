@@ -50,6 +50,8 @@ Add this to your Yii application config:
 Examples
 --------
 
+Read an Excel file
+
 ```php
 public function readExcelFile($filepath)
 {
@@ -57,7 +59,12 @@ public function readExcelFile($filepath)
     $excel = $manager->get($filepath);
     return $excel->read();
 }
+```
+---
 
+Write an Excel file
+
+```
 public function writeExcelFile()
 {
     $manager = Yii::app()->getComponent('excel');
@@ -85,13 +92,18 @@ public function writeExcelFile()
     .....
     $excel->setData($data);
     $excel->save();
-
-    /* This would generate something like:
-    header1 | header2 | header3
-    data1 | data2 | data 3
-    1 | Example | Something */
 }
+```
+This would generate something like:
 
+| header1 | header2 | header3   |
+| ------- | ------- | --------- |
+| data1   | data2   | data 3    |
+| 1       | Example | Something |
+---
+
+Download an Excel file
+```
 public function downloadExcelFile($filepath)
 {
     $manager = Yii::app()->getComponent('excel');
