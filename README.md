@@ -44,7 +44,8 @@ Add this to your Yii application config:
 ),
 ```
 
-* **savePath** the directory or directory alias where you want Excel files to be saved
+* **savePath** the directory or directory alias where you want Excel files to be saved.
+* **excelClass** (optional) class to use for creating _Excel_ objects. Change this if you extend the _Excel_ class.
 
 Examples
 --------

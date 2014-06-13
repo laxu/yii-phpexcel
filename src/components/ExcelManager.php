@@ -13,6 +13,14 @@ class ExcelManager extends \CApplicationComponent
      */
     public $savePath;
 
+    /**
+     * @var string class used for creating Excel instances
+     */
+    public $excelClass = '\laxu\yii_phpexcel\components\Excel';
+
+    /**
+     * @inheritdoc
+     */
     public function init()
     {
         parent::init();
@@ -50,7 +58,7 @@ class ExcelManager extends \CApplicationComponent
     {
         $excel = \Yii::createComponent(
             array(
-                'class' => '\laxu\yii_phpexcel\components\Excel',
+                'class' => $this->excelClass,
                 'filePath' => $filePath,
                 'savePath' => $this->savePath
             )
