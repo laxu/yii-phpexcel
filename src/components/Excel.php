@@ -11,12 +11,17 @@ namespace laxu\yii_phpexcel\components;
 class Excel extends \CComponent
 {
     /**
-     * @var string where file tied to this component is located
+     * @var string directory where the file tied to this component is located
      */
     public $filePath;
 
     /**
-     * @var string Where new files are to be saved
+     * @var string filename of the file tied to this component
+     */
+    public $filename;
+
+    /**
+     * @var string Where new files are to be saved, can be different from the one in filepath
      */
     public $savePath;
 
@@ -26,7 +31,7 @@ class Excel extends \CComponent
     public $phpExcel;
 
     /**
-     * @var int Currently active worksheet
+     * @var int Currently active worksheet index
      */
     public $activeSheet = 0;
 
@@ -43,29 +48,44 @@ class Excel extends \CComponent
     /**
      * @var string|array Characters for columns
      */
-    protected $columnCharSet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    protected $columnCharSet;
+
+    /**
+     * @var array Scenarios where to apply different settings
+     */
+    protected $settingsScenarios = array(
+        'init' => array('useTempDir'),
+        'beforeSave' => array('autoSize')
+    );
+
+    /**
+     * @var \PHPExcel_Worksheet Reference to current worksheet
+     */
+    private $_currentWorkSheet;
+
+    /**
+     * @var int Last row in document
+     */
+    private $_currentRow = 0;
+
+    /**
+     * @var array List of indices for rows that are headers
+     */
+    private $_headerRows = array();
 
     /**
      * Initialize component
      */
     public function init()
     {
-        //Turn columnCharSet into an array
-        $this->columnCharSet = str_split($this->columnCharSet);
-        if(!file_exists($this->savePath)) {
-            //Directory not found, assume it's an alias
-            $this->savePath = \Yii::getPathOfAlias($this->savePath);
-        }
-        if ($this->filePath === null) {
-            //No filename found, create an empty instance
-            $this->createNewInstance();
-        } else {
-            //Filename, try to load from file
-            $this->loadFromFile();
-        }
+        $this->columnCharSet = range('A', 'Z');
+        $this->createNewInstance();
+
+        $this->filePath = $this->savePath;
+        $this->generateFilename();
 
         //Set active worksheet
-        // $this->setWorksheet($this->activeSheet);
+        $this->setWorksheet($this->activeSheet);
     }
 
     /**
@@ -84,11 +104,15 @@ class Excel extends \CComponent
 
     /**
      * Read an Excel file
+     * @param bool $useHeadersAsKeys Use headers as keys
      * @return array
      */
-    public function read()
+    public function read($useHeadersAsKeys = true)
     {
         $rawData = $this->readRaw();
+        if (!$useHeadersAsKeys) {
+            return $rawData;
+        }
         //Assume first row contains headers
         $headers = $rawData[0];
         unset($rawData[0]);
@@ -118,44 +142,121 @@ class Excel extends \CComponent
         $properties = $this->phpExcel->getProperties();
         foreach ($data as $key => $value) {
             $method = 'set' . ucfirst($key);
-            if(method_exists($properties, $method)) {
+            if (method_exists($properties, $method)) {
                 $properties->$method($value);
-            }
-            else {
+            } else {
                 $properties->setCustomProperty($key, $value);
             }
         }
     }
 
     /**
-     * Set data
-     * @param array $dataSet Data as an array of arrays, first element should be header row
+     * Set cell style
+     * @param array|string $cells e.g. array('A1','A2','B2') or string 'A1' or 'A1:G5'
+     * @param array $style See PHPExcel documentation
+     */
+    public function setStyle($cells, $style)
+    {
+        $workSheet = $this->getWorksheet();
+        $workSheet->getStyle($cells)->applyFromArray($style);
+    }
+
+    /**
+     * Set style of row
+     * @param int $rowIdx zero based row index
+     * @param array $style See PHPExcel documentation
+     */
+    public function setRowStyle($rowIdx, $style)
+    {
+        $workSheet = $this->getWorksheet();
+        $cells = $this->getCellRange(
+            0,
+            \PHPExcel_Cell::columnIndexFromString($workSheet->getHighestColumn($rowIdx + 1)) - 1,
+            $rowIdx,
+            $rowIdx
+        );
+        $this->setStyle($cells, $style);
+    }
+
+    /**
+     * Add data to end of document
+     * @param array $dataSet Data as an array of arrays
      * @return bool
+     */
+    public function addData($dataSet)
+    {
+        $data = array();
+        foreach ($dataSet as &$rowData) {
+            $data[$this->_currentRow] = $rowData;
+            $this->_currentRow++;
+        }
+
+        $this->setData($data);
+    }
+
+    /**
+     * Add a header row
+     * @param array $data
+     * @param null|array $style See PHPExcel documentation
+     */
+    public function addHeaderRow($data, $style = null)
+    {
+        $this->setHeaderRow($this->_currentRow, $data, $style);
+        $this->_currentRow++;
+    }
+
+    /**
+     * Set data from a dataset containing data in "row idx => data" format
+     * @param $dataSet
      */
     public function setData($dataSet)
     {
-        $workSheet = $this->getWorksheet();
         foreach ($dataSet as $rowIdx => $rowData) {
-            $rowData = array_values($rowData);
-            foreach ($rowData as $cellIdx => $cellData) {
-                $cellKey = $this->getCellKey($cellIdx, $rowIdx);
-                $workSheet->setCellValue($cellKey, $cellData);
-            }
+            $this->setRowContent($rowIdx, $rowData);
         }
     }
 
     /**
-     * Set settings
+     * Set a row as a header
+     * @param int $rowIdx Zero-based row index where to add header
+     * @param array $data Cell data for row
+     * @param null|array $style Style the header row. See PHPExcel documentation
+     */
+    public function setHeaderRow($rowIdx, $data, $style = null)
+    {
+        $this->setRowContent($rowIdx, $data);
+
+        if ($style) {
+            $this->setRowStyle($rowIdx, $style);
+        }
+
+        $this->_headerRows[] = $rowIdx;
+    }
+
+    /**
+     * Set content for a specific row
+     * @param int $rowIdx The row where you want to set data
      * @param array $data
+     */
+    public function setRowContent($rowIdx, $data)
+    {
+        $workSheet = $this->getWorksheet();
+        $cellKey = $this->getCellKey(0, $rowIdx);
+        $workSheet->fromArray(array_values($data), null, $cellKey);
+    }
+
+    /**
+     * Set settings
+     * @param array $newSettings
      * @throws \CException
      */
-    public function setSettings($data)
+    public function setSettings($newSettings)
     {
-        if (!is_array($data)) {
+        if (!is_array($newSettings)) {
             throw new \CException('$data is not an array');
         }
-        $this->settings = array_merge($this->settings, $data);
-        $this->applySettings();
+        $this->settings = array_merge($this->settings, $newSettings);
+        $this->applySettings('init');
     }
 
     /**
@@ -172,29 +273,57 @@ class Excel extends \CComponent
     }
 
     /**
-     * Apply settings to worksheet
+     * Get the scenario where to apply settings
+     * @param string $key Scenario key
+     * @return array
+     * @throws \CException
      */
-    public function applySettings()
+    protected function getSettingsScenario($key)
     {
+        if (!isset($this->settingsScenarios[$key])) {
+            throw new \CException(t('yii-phpexcel', 'Settings scenario not found'));
+        }
+
+        return $this->settingsScenarios[$key];
+    }
+
+    /**
+     * Apply settings to worksheet
+     * @param string $scenarioKey Scenario where to apply settings
+     */
+    public function applySettings($scenarioKey)
+    {
+        $scenario = $this->getSettingsScenario($scenarioKey);
         $workSheet = $this->getWorksheet();
         foreach ($this->settings as $key => $value) {
+            if (!in_array($key, $scenario)) {
+                continue;
+            }
             switch ($key) {
                 case 'autoSize':
                     if (!$value) {
                         continue;
                     }
-                    if (is_array($key)) {
+                    if (is_array($value)) {
                         //Set specific columns to size automatically
                         foreach ($value as $column) {
                             $workSheet->getColumnDimension($column)->setAutoSize(true);
                         }
                     } else {
                         //Set all columns to size automatically
-                        $columns = $workSheet->getColumnDimensions();
-                        foreach ($columns as $column) {
-                            $column->setAutoSize(true);
+                        $max = $workSheet->getHighestColumn();
+                        foreach (range('A', $max) as $column) {
+                            $workSheet->getColumnDimension($column)->setAutoSize(true);
                         }
                     }
+                    break;
+                case 'useTempDir':
+                    //Use PHP temp dir to save files
+                    $path = sys_get_temp_dir();
+                    if (!preg_match('/\/$/', $path)) {
+                        $path .= '/';
+                    }
+                    $this->filePath = $path;
                     break;
             }
         }
@@ -205,8 +334,9 @@ class Excel extends \CComponent
      */
     public function save()
     {
+        $this->applySettings('beforeSave');
         $objWriter = \PHPExcel_IOFactory::createWriter($this->phpExcel, "Excel2007");
-        $objWriter->save($this->resolveFilePath());
+        $objWriter->save($this->getFullPath());
         $this->stored = true;
     }
 
@@ -216,12 +346,12 @@ class Excel extends \CComponent
      */
     public function download()
     {
-        $filePath = $this->resolveFilePath();
+        $filePath = $this->getFullPath();
 
         if (file_exists($filePath)) {
-            \Yii::app()->getRequest()->sendFile($this->filePath, file_get_contents($filePath));
+            \Yii::app()->getRequest()->sendFile($this->filename, file_get_contents($filePath));
         } else {
-            throw new \CHttpException(404, \Yii::t('excel', 'File not found'));
+            throw new \CHttpException(404, \Yii::t('yii-phpexcel', 'File not found'));
         }
     }
 
@@ -231,20 +361,17 @@ class Excel extends \CComponent
     public function createNewInstance()
     {
         $this->phpExcel = new \PHPExcel();
-        $this->filePath = $this->generateFilePath();
     }
 
     /**
      * Create PHPExcel instance by loading the file
+     * @param string $filePath Full path to file
      * @throws \CException
      */
-    public function loadFromFile()
+    public function loadFromFile($filePath)
     {
-        if (!is_string($this->filePath)) {
-            throw new \CException(\Yii::t('excel', 'Filename should be a string containing a filename'));
-        }
+        $this->setFullPath($filePath);
 
-        $filePath = $this->resolveFilePath();
         if (!file_exists($filePath)) {
             throw new \CException('File not found');
         }
@@ -268,6 +395,7 @@ class Excel extends \CComponent
     public function setWorksheet($idx)
     {
         $this->phpExcel->setActiveSheetIndex($idx);
+        $this->_currentWorkSheet = $this->phpExcel->getActiveSheet();
         $this->activeSheet = $idx;
     }
 
@@ -277,7 +405,10 @@ class Excel extends \CComponent
      */
     public function getWorksheet()
     {
-        return $this->phpExcel->getActiveSheet();
+        if ($this->_currentWorkSheet === null) {
+            $this->_currentWorkSheet = $this->phpExcel->getActiveSheet();
+        }
+        return $this->_currentWorkSheet;
     }
 
     /**
@@ -300,19 +431,6 @@ class Excel extends \CComponent
     }
 
     /**
-     * Resolve full path for file
-     * @throws \CException
-     * @return string
-     */
-    public function resolveFilePath()
-    {
-        if(empty($this->filePath)) {
-            throw new \CException(\Yii::t('excel', 'filePath is undefined'));
-        }
-        return $this->filePath;
-    }
-
-    /**
      * Get Excel column name
      * @param int $cellIdx
      * @param int $rowIdx
@@ -324,20 +442,68 @@ class Excel extends \CComponent
     }
 
     /**
+     * Set filename and path from a full path
+     * @param string $filePath full path including filename
+     * @throws \CException
+     */
+    public function setFullPath($filePath)
+    {
+        $data = pathinfo($filePath);
+        $filename = $data['basename'];
+        $path = $data['dirname'];
+        if (empty($filename) || empty($path)) {
+            throw new \CException(t('yii-phpexcel', 'Could not find filename or path'));
+        }
+
+        $this->filePath = $path;
+        $this->filename = $filename;
+    }
+
+    /**
+     * Get full path for filename tied to this instance
+     * @return string
+     * @throws \CException
+     */
+    public function getFullPath()
+    {
+        if (empty($this->filename)) {
+            throw new \CException(t('yii-phpexcel', 'Filename is undefined'));
+        }
+
+        return $this->filePath . '/' . $this->filename;
+    }
+
+    /**
      * Generate filename
      * @param string $extension file extension
      * @throws \CException
-     * @return string
      */
-    protected function generateFilePath($extension = 'xlsx')
+    protected function generateFilename($extension = 'xlsx')
     {
-        if(empty($this->savePath)) {
-            throw new \CException(\Yii::t('excel', 'savePath is undefined'));
+        if (empty($this->filePath)) {
+            throw new \CException(\Yii::t('yii-phpexcel', 'filePath is undefined'));
         }
         $filename = uniqid() . '.' . $extension;
-        while (file_exists($this->savePath . '/' . $filename)) {
+        while (file_exists($this->filePath . '/' . $filename)) {
             $filename = uniqid() . '.' . $extension;
         }
-        return $this->savePath . '/' . $filename;
+        $this->filename = $filename;
     }
+
+    /**
+     * Get cell range using numbers
+     * @param int $start
+     * @param int $end
+     * @param int $startRow
+     * @param int $endRow
+     * @return string
+     */
+    public function getCellRange($start, $end, $startRow = 0, $endRow = 0)
+    {
+        $startChar = $this->columnCharSet[$start];
+        $endChar = $this->columnCharSet[$end];
+
+        return $startChar . ($startRow + 1) . ':' . $endChar . ($endRow + 1);
+    }
+
 }

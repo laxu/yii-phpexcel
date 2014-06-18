@@ -34,10 +34,9 @@ class ExcelManager extends \CApplicationComponent
      */
     public function get($filePath)
     {
-        if (empty($filePath)) {
-            throw new \CException(\Yii::t('excel', 'Empty filename'));
-        }
-        return $this->buildInstance($filePath);
+        $excel = $this->buildInstance();
+        $excel->loadFromFile($filePath);
+        return $excel;
     }
 
     /**
@@ -51,15 +50,13 @@ class ExcelManager extends \CApplicationComponent
 
     /**
      * Create Excel component
-     * @param null|string $filePath file location
      * @return Excel
      */
-    protected function buildInstance($filePath = null)
+    protected function buildInstance()
     {
         $excel = \Yii::createComponent(
             array(
                 'class' => $this->excelClass,
-                'filePath' => $filePath,
                 'savePath' => $this->savePath
             )
         );
