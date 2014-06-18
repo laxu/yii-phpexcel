@@ -78,6 +78,7 @@ public function readExcelFile($filepath)
 }
 ```
 By default the **read** function will try to read a header row from the first row of the document. If you add false as the first parameter you'll get the raw data as it comes from PHPExcel
+
 ---
 
 Write an Excel file

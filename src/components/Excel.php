@@ -6,7 +6,6 @@ namespace laxu\yii_phpexcel\components;
 /**
  * Class Excel
  * @package laxu\yii_phpexcel\components
- * @var $objPHPExcel \PHPExcel;
  */
 class Excel extends \CComponent
 {
@@ -181,7 +180,6 @@ class Excel extends \CComponent
     /**
      * Add data to end of document
      * @param array $dataSet Data as an array of arrays
-     * @return bool
      */
     public function addData($dataSet)
     {
@@ -206,8 +204,8 @@ class Excel extends \CComponent
     }
 
     /**
-     * Set data from a dataset containing data in "row idx => data" format
-     * @param $dataSet
+     * Set multiple row data from a data set
+     * @param array $dataSet Data set array in "row idx => column arrays" format
      */
     public function setData($dataSet)
     {
@@ -235,8 +233,8 @@ class Excel extends \CComponent
 
     /**
      * Set content for a specific row
-     * @param int $rowIdx The row where you want to set data
-     * @param array $data
+     * @param int $rowIdx Zero-based row index where you want to set data
+     * @param array $data Cell data for row
      */
     public function setRowContent($rowIdx, $data)
     {
@@ -390,7 +388,7 @@ class Excel extends \CComponent
 
     /**
      * Set active worksheet
-     * @param $idx
+     * @param int $idx Zero-based worksheet index
      */
     public function setWorksheet($idx)
     {
@@ -412,7 +410,7 @@ class Excel extends \CComponent
     }
 
     /**
-     * Create a new worksheet and set is active
+     * Create a new worksheet and set as active
      * @param int $idx Index where the new worksheet should go
      */
     public function createWorksheet($idx = null)
@@ -491,11 +489,11 @@ class Excel extends \CComponent
     }
 
     /**
-     * Get cell range using numbers
-     * @param int $start
-     * @param int $end
-     * @param int $startRow
-     * @param int $endRow
+     * Get cell range using numbers, all parameters are zero-based
+     * @param int $start Start column
+     * @param int $end End column
+     * @param int $startRow Starting row
+     * @param int $endRow Ending row
      * @return string
      */
     public function getCellRange($start, $end, $startRow = 0, $endRow = 0)
