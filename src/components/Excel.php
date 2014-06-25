@@ -119,7 +119,7 @@ class Excel extends \CComponent
         $headers = $rawData[0];
         unset($rawData[0]);
         $outputData = array();
-        foreach ($rawData as &$row) {
+        foreach ($rawData as $rowIdx => &$row) {
             //Loop thru rows and create associative arrays based on headers
             $rowData = array();
             foreach ($row as $idx => $value) {
@@ -130,7 +130,7 @@ class Excel extends \CComponent
                     $rowData[$headers[$idx]] = $value;
                 }
             }
-            $outputData[] = $rowData;
+            $outputData[$rowIdx] = $rowData;
         }
         return $outputData;
     }
